@@ -30,11 +30,11 @@ def on_key(key_index, pressed):
     print('key event',key_index)
     topic = PREFIX+'/binary_sensor/'+DEVICE_NAME+'/'+str(key_index)+'/state'
     if(pressed):
-        c.publish(topic, "on")
+        c.publish(topic, "ON")
         display.drawPixel(x, y, 0x00FF00)
         display.flush()
     else:
-        c.publish(topic, "off")
+        c.publish(topic, "OFF")
         display.drawPixel(x, y, COLORS[key_index]) 
         display.flush()
 
@@ -93,6 +93,9 @@ try:
         topic = PREFIX+'/binary_sensor/'+DEVICE_NAME+'/'+str(key_index)+'/'
         c.publish(topic+"config", 
                   '{"name": "cz20-btn'+str(key_index)+'", "state_topic":"'+topic+'state", "unique_id":"'+DEVICE_NAME+'-btn'+str(key_index)+'", "device":'+DEVICE_CONFIG+'}')
+        topic = PREFIX+'/light/'+DEVICE_NAME+'/'+str(key_index)+'/'
+        c.publish(topic+"config", 
+                  '{"name": "cz20-btn'+str(key_index)+'", "command_topic":"'+topic+'command" "state_topic":"'+topic+'state", "rgb_command_topic":"'+topic+'rgb", "unique_id":"'+DEVICE_NAME+'-btn'+str(key_index)+'", "device":'+DEVICE_CONFIG+'}')
 except:
     audio.play('/apps/mqtt_button/fail_connect_mqtt.mp3')
     time.sleep(6)
