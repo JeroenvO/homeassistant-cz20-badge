@@ -3,7 +3,7 @@ from umqtt.simple import MQTTClient
 import binascii
 
 # Get the settings from the settings menu
-settings = appconfig.get('mqtt_button', {'MQTT_server_ip': "192.168.1.104",
+settings = appconfig.get('homeassistant-cz20-badge', {'MQTT_server_ip': "192.168.1.104",
                                          'MQTT_device_name': "cz2020",
                                          'MQTT_discovery_prefix': 'homeassistant'})
 SERVER_IP = settings['MQTT_server_ip']
