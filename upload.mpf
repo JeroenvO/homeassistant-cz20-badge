@@ -1,0 +1,4 @@
+open ttyACM0
+cd apps/jvotest
+put __init__.py
+ls
