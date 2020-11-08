@@ -18,7 +18,10 @@ settings = appconfig.get('homeassistant_cz20_badge', {'MQTT_server_ip': "192.168
 SERVER_IP = settings['MQTT_server_ip']
 DEVICE_NAME = settings['MQTT_device_name'].strip('/')
 PREFIX = settings['MQTT_discovery_prefix'].strip('/')
-ON_PRESS_COLOR = int(settings['on_press_color'].strip(), 16)
+try:
+    ON_PRESS_COLOR = int(settings['on_press_color'].strip(), 16)
+except:
+    ON_PRESS_COLOR = 0xffffff
 UUID = binascii.hexlify(machine.unique_id()).decode()
 NODE_ID = UUID
 DEVICE_CONFIG = '{\
@@ -45,9 +48,10 @@ def set_color(key_index, on=True):
     x, y = key_index % 4, int(key_index / 4)
     if on:
         cs = [int(c * BRIGHTNESS[key_index] / 255) for c in COLORS[key_index]]
-        display.drawPixel(x, y, (cs[0] << 16) + (cs[1] << 8) + cs[2])
+        c_hex =(cs[0] << 16) + (cs[1] << 8) + cs[2]
+        display.drawPixel(x, y, c_hex)
     else:
-        display.drawPixel(x, y, ON_PRESS_COLOR)
+        display.drawPixel(x, y, 0)
     display.flush()
 
 
@@ -59,7 +63,7 @@ def on_key(key_index, pressed):
     if pressed:
         x, y = key_index % 4, int(key_index / 4)
         c.publish(topic, "ON")
-        display.drawPixel(x, y, 0xffffff)  # bright white on press
+        display.drawPixel(x, y, ON_PRESS_COLOR)  # bright white on press
         display.flush()
     else:
         c.publish(topic, "OFF")
@@ -85,7 +89,6 @@ def on_home(is_pressed):
 # MQTT subscribe handler
 def sub_cb(topic, msg):
     global c
-    # print((topic, msg))
     # Split the topic into a list. 0=prefix, 1=integration, 2=device, 3=key index
     # integration = int(topic.decode('utf-8').split('/')[1])  # this will always be "light"
     topic = topic.decode('utf-8').split('/')
@@ -133,7 +136,7 @@ display.flush()
 # Setup MQTT and connect to it
 display.drawLine(0, 1, 3, 1, ORANGE)
 display.flush()
-c = MQTTClient("umqtt_client", SERVER_IP)
+c = MQTTClient(UUID, SERVER_IP)
 c.set_callback(sub_cb)
 # Set a last-will
 for key_index in range(16):  # each button
@@ -156,14 +159,14 @@ display.flush()
 
 for key_index in range(16):  # each button
     topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
-    message = '{' + '"name": "btn-{key_index:02d}", "state_topic":"{topic}state", "avty_t":"{topic}status", "unique_id":"{UUID}-btn{key_index}", "device":{DEVICE_CONFIG}'.format(
-        key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG) + '}'
+    message = '{' + '"name": "{DEVICE_NAME}-{key_index:02d}", "state_topic":"{topic}state", "avty_t":"{topic}status", "unique_id":"{UUID}-btn{key_index}", "device":{DEVICE_CONFIG}'.format(
+        key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     c.publish(topic + "config", message)
     c.publish(topic + "status", "online")
     topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
     message = '{' + \
-              '"name": "btn-{key_index:02d}-light","state_topic":"{topic}state","avty_t":"{topic}status","command_topic":"{topic}switch", "brightness_state_topic":"{topic}brightness/state","brightness_command_topic":"{topic}brightness/set","rgb_state_topic":"{topic}rgb/state","rgb_command_topic":"{topic}rgb/set", "unique_id":"{UUID}-btn{key_index}-light", "device":{DEVICE_CONFIG}, "retain":true'. \
-                  format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG) + '}'
+              '"name": "{DEVICE_NAME}-{key_index:02d}-light","state_topic":"{topic}state","avty_t":"{topic}status","command_topic":"{topic}switch", "brightness_state_topic":"{topic}brightness/state","brightness_command_topic":"{topic}brightness/set","rgb_state_topic":"{topic}rgb/state","rgb_command_topic":"{topic}rgb/set", "unique_id":"{UUID}-btn{key_index}-light", "device":{DEVICE_CONFIG}, "retain":true'. \
+                  format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     c.publish(topic + "config", message)
     c.publish(topic + "status", "online")
 
@@ -186,6 +189,9 @@ display.flush()
 
 try:
     while 1:
-        c.wait_msg()
+        try:
+            c.wait_msg()
+        except Exception as e:
+            print('error: ' + str(e))
 finally:
     c.disconnect()

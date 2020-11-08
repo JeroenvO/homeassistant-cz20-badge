@@ -2,7 +2,7 @@
 Connect cz2020 badge from badge.team to home-assistant as binary sensor and rgb light.
 
 16 buttons and lights are automatically detected by homeassistant using MQTT.
-
+Button numbers are from 0 to 15
 [github](https://github.com/JeroenvO/homeassistant-cz20-badge)
 
 ## Setup
