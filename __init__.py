@@ -1,3 +1,10 @@
+"""
+Copyright Jeroen van Oorschot 2020
+https://jjvanoorschot.nl
+MIT Licence
+"""
+
+
 import touchpads, keypad, display, wifi, audio, time, system, appconfig, machine
 from umqtt.simple import MQTTClient
 import binascii
@@ -21,79 +28,85 @@ ORANGE = 0xFF5500
 RED = 0xff0000
 GREEN = 0x00ff00
 COLORS = [[255, 255, 255]] * 16  # save color, brightness for each button.
-BRIGHTNESS = [255] * 16  # save color, brightness for each button.
+BRIGHTNESS = [255] * 16  # save brightness for each button.
+STATE = [False] * 16  # save state for each button.
+
 # Clear the screen
 display.drawFill(0xff0000)
 display.flush()
 
 
+def set_color(key_index, on=True):
+    x, y = key_index % 4, int(key_index / 4)
+    if on:
+        cs = [int(c * BRIGHTNESS[key_index] / 255) for c in COLORS[key_index]]
+        display.drawPixel(x, y, (cs[0] << 16) + (cs[1] << 8) + cs[2])
+    else:
+        display.drawPixel(x, y, 0)
+    display.flush()
+
+
 # Key press handler
 def on_key(key_index, pressed):
     global c
-    x, y = key_index % 4, int(key_index / 4)
-    print('key event', key_index)
+    # print('key event', key_index)
     topic = PREFIX + '/binary_sensor/' + DEVICE_NAME + '/' + str(key_index) + '/state'
     if pressed:
+        x, y = key_index % 4, int(key_index / 4)
         c.publish(topic, "ON")
         display.drawPixel(x, y, RED)
         display.flush()
     else:
         c.publish(topic, "OFF")
-        cs = [int(c * BRIGHTNESS[key_index]/255) for c in COLORS[key_index]]
-        display.drawPixel(x, y, (cs[0] << 16) + (cs[1] << 8) + cs[2])
-        display.flush()
+        set_color(key_index)
+
 
 # When the home key is pressed, disconnect everything and return to home
 def on_home(is_pressed):
     global c
-    print('home button: ' + str(is_pressed))
+    # print('home button: ' + str(is_pressed))
     if is_pressed == 512:
+        display.drawFill(RED)
+        display.flush()
         for key_index in range(16):  # each button
             topic = PREFIX + '/binary_sensor/' + DEVICE_NAME + '/' + str(key_index) + '/'
             c.publish(topic + "status", "offline")
             topic = PREFIX + '/light/' + DEVICE_NAME + '/' + str(key_index) + '/'
             c.publish(topic + "status", "offline")
         c.disconnect()
-        display.drawFill(RED)
-        display.flush()
-        time.sleep(1)
         system.launcher()
 
 
 # MQTT subscribe handler
 def sub_cb(topic, msg):
     global c
-    print((topic, msg))
+    # print((topic, msg))
     # Split the topic into a list. 0=prefix, 1=integration, 2=device, 3=key index
     # integration = int(topic.decode('utf-8').split('/')[1])  # this will always be "light"
     topic = topic.decode('utf-8').split('/')
     key_index = int(topic[3])
     command = topic[4]
+    topic_u = PREFIX + '/light/' + DEVICE_NAME + '/' + str(key_index) + '/'
+    msg = msg.decode('utf-8')
     if command == 'switch':
-        if msg.decode('utf-8') == 'ON':
-            print('set rgb on')
-            BRIGHTNESS[key_index] = 255
-        elif msg.decode('utf-8') == 'OFF':
-            print('set rgb off')
-            BRIGHTNESS[key_index] = 0
+        if msg == 'ON':
+            STATE[key_index] = True
+            set_color(key_index)
+            c.publish(topic_u + 'state', 'ON')
+        elif msg == 'OFF':
+            STATE[key_index] = False
+            set_color(key_index, False)
+            c.publish(topic_u + 'state', 'ON')
         else:
             print('invalid')
     elif command == 'rgb' and topic[5] == 'set':
-        print('set rgb color: ' + str(msg))
-        # c = '{:02X}'.format(*[int(c * c[3] / 255) for c in msg])
+        COLORS[key_index] = [int(c) for c in msg.split(',')]
+        set_color(key_index)
+        c.publish(topic_u + 'rgb/state', msg)
     elif command == 'brightness' and topic[5] == 'set':
-        print('set rgb brightness: ' + str(msg))
         BRIGHTNESS[key_index] = int(msg)
-        # c = '{:02X}'.format(*[int(c*c[3]/255) for c in color])
-
-    # x, y = key_index % 4, int(key_index / 4)
-    # try:
-    #     msg_hex = int(msg.decode('utf-8'), 16)
-    #     COLORS[key_index] = msg_hex  # save color
-    #     display.drawPixel(x, y, msg_hex)
-    #     display.flush()
-    # except:
-    #     print("Not a Hex number")
+        set_color(key_index)
+        c.publish(topic_u + 'brightness/state', msg)
 
 
 # start main:
@@ -138,14 +151,14 @@ display.flush()
 
 for key_index in range(16):  # each button
     topic = PREFIX + '/binary_sensor/' + DEVICE_NAME + '/' + str(key_index) + '/'
-    message = '{' + '"name": "btn-{key_index:02d}", "state_topic":"{topic}state", "avty_t":"{topic}status", "unique_id":"{DEVICE_NAME}-btn{key_index}", "device":{DEVICE_CONFIG}'.format(
-        key_index=key_index, topic=topic, DEVICE_NAME=DEVICE_NAME, DEVICE_CONFIG=DEVICE_CONFIG) + '}'
+    message = '{' + '"name": "btn-{key_index:02d}", "state_topic":"{topic}state", "avty_t":"{topic}status", "unique_id":"{UUID}-btn{key_index}", "device":{DEVICE_CONFIG}'.format(
+        key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG) + '}'
     c.publish(topic + "config", message)
     c.publish(topic + "status", "online")
     topic = PREFIX + '/light/' + DEVICE_NAME + '/' + str(key_index) + '/'
     message = '{' + \
-              '"name": "btn-{key_index:02d}-light","state_topic":"{topic}state","avty_t":"{topic}status","command_topic":"{topic}switch", "brightness_state_topic":"{topic}brightness/status","brightness_command_topic":"{topic}brightness/set","rgb_state_topic":"{topic}rgb/status","rgb_command_topic":"{topic}rgb/set", "unique_id":"{DEVICE_NAME}-btn{key_index}-light", "device":{DEVICE_CONFIG}'. \
-                  format(key_index=key_index, topic=topic, DEVICE_NAME=DEVICE_NAME, DEVICE_CONFIG=DEVICE_CONFIG) + '}'
+              '"name": "btn-{key_index:02d}-light","state_topic":"{topic}state","avty_t":"{topic}status","command_topic":"{topic}switch", "brightness_state_topic":"{topic}brightness/state","brightness_command_topic":"{topic}brightness/set","rgb_state_topic":"{topic}rgb/state","rgb_command_topic":"{topic}rgb/set", "unique_id":"{UUID}-btn{key_index}-light", "device":{DEVICE_CONFIG}, "retain":true'. \
+                  format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG) + '}'
     c.publish(topic + "config", message)
     c.publish(topic + "status", "online")
 

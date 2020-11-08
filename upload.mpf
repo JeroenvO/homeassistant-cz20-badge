@@ -1,4 +1,4 @@
 open ttyACM0
-cd apps/jvotest
+cd apps/homeassistant-cz20-badge
 put __init__.py
 ls
