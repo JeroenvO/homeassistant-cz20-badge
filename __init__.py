@@ -1,4 +1,5 @@
 """
+Homeassistant CZ2020 badge MQTT
 Copyright Jeroen van Oorschot 2020
 https://jjvanoorschot.nl
 MIT Licence
@@ -10,7 +11,7 @@ from umqtt.simple import MQTTClient
 import binascii
 
 # Get the settings from the settings menu
-settings = appconfig.get('homeassistant-cz20-badge', {'MQTT_server_ip': "192.168.1.104",
+settings = appconfig.get('homeassistant_cz20_badge', {'MQTT_server_ip': "192.168.1.104",
                                                       'MQTT_device_name': "cz2020",
                                                       'MQTT_discovery_prefix': 'homeassistant'})
 SERVER_IP = settings['MQTT_server_ip']
@@ -20,9 +21,9 @@ UUID = binascii.hexlify(machine.unique_id()).decode()
 DEVICE_CONFIG = '{\
 "identifiers": "' + UUID + '",\
 "name": "' + DEVICE_NAME + '",\
-"sw_version": "cz2020-badge.team v0.1",\
+"sw_version": "cz2020-badge.team v1",\
 "model": "CZ2020",\
-"manufacturer": "badge.team"\
+"manufacturer": "badge.team and JeroenvO"\
 }'
 ORANGE = 0xFF5500
 RED = 0xff0000

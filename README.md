@@ -1,11 +1,14 @@
 # homeassistant-cz20-badge
-Connect cz2020 badge from badge.team to home-assistant as binary sensor
+Connect cz2020 badge from badge.team to home-assistant as binary sensor and rgb light.
 
-16 buttons are automatically detected by homeassistant if homeassitant is configured for autodetection.
+16 buttons and lights are automatically detected by homeassistant using MQTT.
+
+[github](https://github.com/JeroenvO/homeassistant-cz20-badge)
 
 ## Setup
 Make sure to put the correct settings in the app settings menu of https://webusb.hackz.one. 
 Set the server ip of the mqtt server of homeassistant (usually the same ip as your homeassistant).
+Make sure MQTT and autodiscovery are enabled in your homeassistant config.
 Choose any device name for the device (default: cz2020) and optionally change the [discovery prefix](https://www.home-assistant.io/docs/mqtt/discovery/#discovery_prefix).
 
 ## Startup sequence
