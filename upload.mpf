@@ -1,4 +1,0 @@
-open ttyACM0
-cd apps/homeassistant-cz20-badge
-put __init__.py
-ls
