@@ -37,16 +37,16 @@ RED = 0xff0000
 GREEN = 0x00ff00
 COLORS = [[0, 0, 0]] * 16  # save color, brightness for each button.
 BRIGHTNESS = [0] * 16  # save brightness for each button.
-STATE = [False] * 16  # save state for each button.
+STATE = [True] * 16  # save state for each button.
 
 # Clear the screen
 display.drawFill(0xff0000)
 display.flush()
 
 
-def set_color(key_index, on=True):
+def set_color(key_index):
     x, y = key_index % 4, int(key_index / 4)
-    if on:
+    if STATE[key_index]:
         cs = [int(c * BRIGHTNESS[key_index] / 255) for c in COLORS[key_index]]
         c_hex =(cs[0] << 16) + (cs[1] << 8) + cs[2]
         display.drawPixel(x, y, c_hex)
@@ -103,8 +103,8 @@ def sub_cb(topic, msg):
             c.publish(topic_u + 'state', 'ON')
         elif msg == 'OFF':
             STATE[key_index] = False
-            set_color(key_index, False)
-            c.publish(topic_u + 'state', 'ON')
+            set_color(key_index)
+            c.publish(topic_u + 'state', 'OFF')
         else:
             print('invalid')
     elif command == 'rgb' and topic[5] == 'set':
