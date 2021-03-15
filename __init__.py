@@ -44,6 +44,18 @@ display.drawFill(0xff0000)
 display.flush()
 
 
+def try_publish(topic, msg):
+    global c
+    try:
+        c.publish(topic, msg)
+    except:  # stop app on failure
+        try:
+            c.disconnect()
+        except:
+            pass
+        system.launcher()
+
+
 def set_color(key_index):
     x, y = key_index % 4, int(key_index / 4)
     if STATE[key_index]:
@@ -57,38 +69,35 @@ def set_color(key_index):
 
 # Key press handler
 def on_key(key_index, pressed):
-    global c
     # print('key event', key_index)
     topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/state'
     if pressed:
         x, y = key_index % 4, int(key_index / 4)
-        c.publish(topic, "ON")
+        try_publish(topic, "ON")
         display.drawPixel(x, y, ON_PRESS_COLOR)  # bright white on press
         display.flush()
     else:
-        c.publish(topic, "OFF")
+        try_publish(topic, "OFF")
         set_color(key_index)
 
 
 # When the home key is pressed, disconnect everything and return to home
 def on_home(is_pressed):
     global c
-    # print('home button: ' + str(is_pressed))
     if is_pressed == 512:
         display.drawFill(RED)
         display.flush()
         for key_index in range(16):  # each button
             topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
-            c.publish(topic + "status", "offline")
+            try_publish(topic + "status", "offline")
             topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
-            c.publish(topic + "status", "offline")
+            try_publish(topic + "status", "offline")
         c.disconnect()
         system.launcher()
 
 
 # MQTT subscribe handler
 def sub_cb(topic, msg):
-    global c
     # Split the topic into a list. 0=prefix, 1=integration, 2=device, 3=key index
     # integration = int(topic.decode('utf-8').split('/')[1])  # this will always be "light"
     topic = topic.decode('utf-8').split('/')
@@ -100,21 +109,21 @@ def sub_cb(topic, msg):
         if msg == 'ON':
             STATE[key_index] = True
             set_color(key_index)
-            c.publish(topic_u + 'state', 'ON')
+            try_publish(topic_u + 'state', 'ON')
         elif msg == 'OFF':
             STATE[key_index] = False
             set_color(key_index)
-            c.publish(topic_u + 'state', 'OFF')
+            try_publish(topic_u + 'state', 'OFF')
         else:
             print('invalid')
     elif command == 'rgb' and topic[5] == 'set':
         COLORS[key_index] = [int(c) for c in msg.split(',')]
         set_color(key_index)
-        c.publish(topic_u + 'rgb/state', msg)
+        try_publish(topic_u + 'rgb/state', msg)
     elif command == 'brightness' and topic[5] == 'set':
         BRIGHTNESS[key_index] = int(msg)
         set_color(key_index)
-        c.publish(topic_u + 'brightness/state', msg)
+        try_publish(topic_u + 'brightness/state', msg)
 
 
 # start main:
@@ -161,14 +170,14 @@ for key_index in range(16):  # each button
     topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
     message = '{' + '"name": "{DEVICE_NAME}-{key_index:02d}", "state_topic":"{topic}state", "avty_t":"{topic}status", "unique_id":"{UUID}-btn{key_index}", "device":{DEVICE_CONFIG}'.format(
         key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
-    c.publish(topic + "config", message)
-    c.publish(topic + "status", "online")
+    try_publish(topic + "config", message)
+    try_publish(topic + "status", "online")
     topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
     message = '{' + \
               '"name": "{DEVICE_NAME}-{key_index:02d}-light","state_topic":"{topic}state","avty_t":"{topic}status","command_topic":"{topic}switch", "brightness_state_topic":"{topic}brightness/state","brightness_command_topic":"{topic}brightness/set","rgb_state_topic":"{topic}rgb/state","rgb_command_topic":"{topic}rgb/set", "unique_id":"{UUID}-btn{key_index}-light", "device":{DEVICE_CONFIG}, "retain":true'. \
                   format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
-    c.publish(topic + "config", message)
-    c.publish(topic + "status", "online")
+    try_publish(topic + "config", message)
+    try_publish(topic + "status", "online")
 
 display.drawLine(0, 2, 3, 2, 0x00ff00)  # mqtt finish part 2
 display.drawLine(0, 3, 3, 3, ORANGE)  # mqtt part 3
@@ -186,12 +195,16 @@ touchpads.on(touchpads.HOME, on_home)
 
 display.drawFill(0x000000)
 display.flush()
-
-try:
-    while 1:
-        try:
-            c.wait_msg()
-        except Exception as e:
-            print('error: ' + str(e))
-finally:
-    c.disconnect()
+error = False  # crash on second error
+while 1:
+    try:
+        c.wait_msg()
+    except Exception as e:
+        if error: # second time erroring
+            try:
+                c.disconnect()
+            except:
+                pass
+            system.launcher()
+        error = True  # stop on next error.
+        print('error: ' + str(e))
