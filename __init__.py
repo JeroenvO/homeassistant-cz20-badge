@@ -195,16 +195,15 @@ touchpads.on(touchpads.HOME, on_home)
 
 display.drawFill(0x000000)
 display.flush()
-error = False  # crash on second error
+
 while 1:
     try:
         c.wait_msg()
     except Exception as e:
-        if error: # second time erroring
-            try:
-                c.disconnect()
-            except:
-                pass
-            system.launcher()
-        error = True  # stop on next error.
         print('error: ' + str(e))
+        try:
+            c.disconnect()
+        except:
+            break
+        break
+system.launcher()
