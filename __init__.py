@@ -18,7 +18,8 @@ import wifi
 from umqtt.simple import MQTTClient
 
 # Get the settings from the settings menu
-settings = appconfig.get('homeassistant_cz20_badge', {'MQTT_server_ip': "192.168.1.104",
+APP_NAME = 'homeassistant_cz20_badge'
+settings = appconfig.get(APP_NAME, {'MQTT_server_ip': "192.168.1.104",
                                                       'MQTT_device_name': "cz2020",
                                                       'MQTT_discovery_prefix': 'homeassistant',
                                                       'on_press_color': '0xffffff',
@@ -40,11 +41,11 @@ except:
 UUID = binascii.hexlify(machine.unique_id()).decode()
 NODE_ID = UUID
 DEVICE_CONFIG = '{\
-"identifiers": "' + UUID + '",\
+"ids": "' + UUID + '",\
 "name": "' + DEVICE_NAME + '",\
-"sw_version": "cz2020-badge.team v1",\
-"model": "CampZone 2020 badge",\
-"manufacturer": "badge.team and JeroenvO"\
+"sw": "cz2020-badge.team v1",\
+"mdl": "CampZone 2020 badge",\
+"mf": "badge.team and JeroenvO"\
 }'
 
 ORANGE = 0xFF5500
@@ -76,7 +77,7 @@ def restart():
     display.drawFill(ORANGE)
     display.flush()
     time.sleep(1)
-    system.start('homeassistant_cz20_badge')
+    system.start(APP_NAME)
 
 
 def set_color(key_index):
@@ -155,7 +156,6 @@ def sub_cb(topic, msg):
         set_color(key_index)
         try_publish(topic_u + 'brightness/state', msg)
     elif topic[0] == 'homeassistant' and topic[1] == 'status':
-        if msg == 'offline':
             print('Hass offline! Rebooting app.')
             restart()
 
@@ -202,13 +202,13 @@ display.flush()
 
 for key_index in range(16):  # each button
     topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
-    message = '{' + '"name": "{DEVICE_NAME}-{key_index:02d}", "stat_t":"{topic}state", "avty_t":"{topic}status", "uniq_id":"{UUID}-btn{key_index}", "dev":{DEVICE_CONFIG}'.format(
+    message = '{' + '"name": "{DEVICE_NAME}-{key_index:02d}", "stat_t":"~/state", "avty_t":"~/status", "uniq_id":"{UUID}-btn{key_index}", "dev":{DEVICE_CONFIG}, "~":{topic}'.format(
         key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     try_publish(topic + "config", message)
     try_publish(topic + "status", "online")
     topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
     message = '{' + \
-              '"name": "{DEVICE_NAME}-{key_index:02d}-light","stat_t":"{topic}state","avty_t":"{topic}status","cmd_t":"{topic}switch", "bri_stat_t":"{topic}brightness/state","bri_cmd_t":"{topic}brightness/set","rgb_stat_t":"{topic}rgb/state","rgb_cmd_t":"{topic}rgb/set", "uniq_id":"{UUID}-btn{key_index}-light", "dev":{DEVICE_CONFIG}, "ret":true'. \
+              '"name": "{DEVICE_NAME}-{key_index:02d}-light","stat_t":"~/state","avty_t":"~/status","cmd_t":"~/switch", "bri_stat_t":"~/brightness/state","bri_cmd_t":"~/brightness/set","rgb_stat_t":"~/rgb/state","rgb_cmd_t":"~/rgb/set", "uniq_id":"{UUID}-btn{key_index}-light", "dev":{DEVICE_CONFIG}, "ret":true, "~":{topic}'. \
                   format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     try_publish(topic + "config", message)
     try_publish(topic + "status", "online")
