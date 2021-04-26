@@ -115,10 +115,11 @@ def on_home(is_pressed):
 def on_ok(is_pressed):
     global c
     if is_pressed:
+        print('Rebooting app.')
         display.drawFill(ORANGE)
         display.flush()
         time.sleep(1)
-        system.reboot()
+        system.start('homeassistant-cz20-badge')
 
 
 # MQTT subscribe handler
@@ -154,7 +155,8 @@ def sub_cb(topic, msg):
             print('Hass offline! Rebooting app.')
             display.drawFill(ORANGE)
             display.flush()
-            system.reboot()
+            time.sleep(1)
+            system.start('homeassistant-cz20-badge')
 
 
 # start main:
