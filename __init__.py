@@ -21,7 +21,12 @@ from umqtt.simple import MQTTClient
 settings = appconfig.get('homeassistant_cz20_badge', {'MQTT_server_ip': "192.168.1.104",
                                                       'MQTT_device_name': "cz2020",
                                                       'MQTT_discovery_prefix': 'homeassistant',
-                                                      'on_press_color': '0xffffff'})
+                                                      'on_press_color': '0xffffff',
+                                                      'MQTT_port': 0,
+                                                      'MQTT_username': None,
+                                                      'MQTT_password': None
+                                                      }
+                         )
 SERVER_IP = settings['MQTT_server_ip']
 DEVICE_NAME = settings['MQTT_device_name'].strip('/')
 USERNAME = settings['MQTT_username'] or None
