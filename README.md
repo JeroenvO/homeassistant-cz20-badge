@@ -7,7 +7,7 @@ Button numbers are from 0 to 15
 
 ## Setup
 Make sure to put the correct settings in the app settings menu of https://webusb.hackz.one. 
-Set the server ip of the mqtt server of homeassistant (usually the same ip as your homeassistant).
+Set the server ip of the mqtt server of homeassistant (usually the same ip as your homeassistant). Optionally set the port, username and password.
 Make sure MQTT and autodiscovery are enabled in your homeassistant config.
 Choose any device name for the device (default: cz2020) and optionally change the [discovery prefix](https://www.home-assistant.io/docs/mqtt/discovery/#discovery_prefix).
 
