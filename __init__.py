@@ -5,10 +5,17 @@ https://jjvanoorschot.nl
 MIT Licence
 """
 
-
-import touchpads, keypad, display, wifi, audio, time, system, appconfig, machine
-from umqtt.simple import MQTTClient
 import binascii
+
+import appconfig
+import display
+import keypad
+import machine
+import system
+import time
+import touchpads
+import wifi
+from umqtt.simple import MQTTClient
 
 # Get the settings from the settings menu
 settings = appconfig.get('homeassistant_cz20_badge', {'MQTT_server_ip': "192.168.1.104",
@@ -17,6 +24,9 @@ settings = appconfig.get('homeassistant_cz20_badge', {'MQTT_server_ip': "192.168
                                                       'on_press_color': '0xffffff'})
 SERVER_IP = settings['MQTT_server_ip']
 DEVICE_NAME = settings['MQTT_device_name'].strip('/')
+USERNAME = settings['MQTT_username'] or None
+PASSWORD = settings['MQTT_password'] or None
+PORT = settings['MQTT_port'] or 0
 PREFIX = settings['MQTT_discovery_prefix'].strip('/')
 try:
     ON_PRESS_COLOR = int(settings['on_press_color'].strip(), 16)
@@ -60,7 +70,7 @@ def set_color(key_index):
     x, y = key_index % 4, int(key_index / 4)
     if STATE[key_index]:
         cs = [int(c * BRIGHTNESS[key_index] / 255) for c in COLORS[key_index]]
-        c_hex =(cs[0] << 16) + (cs[1] << 8) + cs[2]
+        c_hex = (cs[0] << 16) + (cs[1] << 8) + cs[2]
         display.drawPixel(x, y, c_hex)
     else:
         display.drawPixel(x, y, 0)
@@ -74,7 +84,7 @@ def on_key(key_index, pressed):
     if pressed:
         x, y = key_index % 4, int(key_index / 4)
         try_publish(topic, "ON")
-        display.drawPixel(x, y, ON_PRESS_COLOR)  # bright white on press
+        display.drawPixel(x, y, ON_PRESS_COLOR)  # on press color
         display.flush()
     else:
         try_publish(topic, "OFF")
@@ -94,6 +104,16 @@ def on_home(is_pressed):
             try_publish(topic + "status", "offline")
         c.disconnect()
         system.launcher()
+
+
+# When the home key is pressed, disconnect everything and return to home
+def on_ok(is_pressed):
+    global c
+    if is_pressed:
+        display.drawFill(ORANGE)
+        display.flush()
+        time.sleep(1)
+        system.reboot()
 
 
 # MQTT subscribe handler
@@ -124,6 +144,12 @@ def sub_cb(topic, msg):
         BRIGHTNESS[key_index] = int(msg)
         set_color(key_index)
         try_publish(topic_u + 'brightness/state', msg)
+    elif topic[0] == 'homeassistant' and topic[1] == 'status':
+        if msg == 'offline':
+            print('Hass offline! Rebooting app.')
+            display.drawFill(ORANGE)
+            display.flush()
+            system.reboot()
 
 
 # start main:
@@ -145,7 +171,7 @@ display.flush()
 # Setup MQTT and connect to it
 display.drawLine(0, 1, 3, 1, ORANGE)
 display.flush()
-c = MQTTClient(UUID, SERVER_IP)
+c = MQTTClient(UUID, SERVER_IP, port=PORT, user=USERNAME, password=PASSWORD)
 c.set_callback(sub_cb)
 # Set a last-will
 for key_index in range(16):  # each button
@@ -185,6 +211,7 @@ display.flush()
 
 topic = PREFIX + '/light/' + NODE_ID + '/'
 c.subscribe(topic + "#")
+c.subscribe('homeassistant/status')
 
 display.drawLine(0, 3, 3, 3, GREEN)  # mqtt finish part 2
 display.flush()
@@ -192,6 +219,7 @@ display.flush()
 # Configure the key press handler
 keypad.add_handler(on_key)
 touchpads.on(touchpads.HOME, on_home)
+touchpads.on(touchpads.OK, on_ok)
 
 display.drawFill(0x000000)
 display.flush()
