@@ -71,6 +71,14 @@ def try_publish(topic, msg):
         system.launcher()
 
 
+def restart():
+    print('restarting app')
+    display.drawFill(ORANGE)
+    display.flush()
+    time.sleep(1)
+    system.start('homeassistant_cz20_badge')
+
+
 def set_color(key_index):
     x, y = key_index % 4, int(key_index / 4)
     if STATE[key_index]:
@@ -115,11 +123,7 @@ def on_home(is_pressed):
 def on_ok(is_pressed):
     global c
     if is_pressed:
-        print('Rebooting app.')
-        display.drawFill(ORANGE)
-        display.flush()
-        time.sleep(1)
-        system.start('homeassistant-cz20-badge')
+        restart()
 
 
 # MQTT subscribe handler
@@ -153,10 +157,7 @@ def sub_cb(topic, msg):
     elif topic[0] == 'homeassistant' and topic[1] == 'status':
         if msg == 'offline':
             print('Hass offline! Rebooting app.')
-            display.drawFill(ORANGE)
-            display.flush()
-            time.sleep(1)
-            system.start('homeassistant-cz20-badge')
+            restart()
 
 
 # start main:
@@ -201,13 +202,13 @@ display.flush()
 
 for key_index in range(16):  # each button
     topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
-    message = '{' + '"name": "{DEVICE_NAME}-{key_index:02d}", "state_topic":"{topic}state", "avty_t":"{topic}status", "unique_id":"{UUID}-btn{key_index}", "device":{DEVICE_CONFIG}'.format(
+    message = '{' + '"name": "{DEVICE_NAME}-{key_index:02d}", "stat_t":"{topic}state", "avty_t":"{topic}status", "uniq_id":"{UUID}-btn{key_index}", "dev":{DEVICE_CONFIG}'.format(
         key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     try_publish(topic + "config", message)
     try_publish(topic + "status", "online")
     topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
     message = '{' + \
-              '"name": "{DEVICE_NAME}-{key_index:02d}-light","state_topic":"{topic}state","avty_t":"{topic}status","command_topic":"{topic}switch", "brightness_state_topic":"{topic}brightness/state","brightness_command_topic":"{topic}brightness/set","rgb_state_topic":"{topic}rgb/state","rgb_command_topic":"{topic}rgb/set", "unique_id":"{UUID}-btn{key_index}-light", "device":{DEVICE_CONFIG}, "retain":true'. \
+              '"name": "{DEVICE_NAME}-{key_index:02d}-light","stat_t":"{topic}state","avty_t":"{topic}status","cmd_t":"{topic}switch", "bri_stat_t":"{topic}brightness/state","bri_cmd_t":"{topic}brightness/set","rgb_stat_t":"{topic}rgb/state","rgb_cmd_t":"{topic}rgb/set", "uniq_id":"{UUID}-btn{key_index}-light", "dev":{DEVICE_CONFIG}, "ret":true'. \
                   format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     try_publish(topic + "config", message)
     try_publish(topic + "status", "online")
