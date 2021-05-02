@@ -201,12 +201,12 @@ display.drawLine(0, 2, 3, 2, ORANGE)  # mqtt start part 2
 display.flush()
 
 for key_index in range(16):  # each button
-    topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
+    topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index)
     message = '{' + '"name":"{DEVICE_NAME}-{key_index:02d}","stat_t":"~/state","avty_t":"~/status","uniq_id":"{UUID}-btn{key_index}","dev":{DEVICE_CONFIG},"~":"{topic}"'.format(
         key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
     try_publish(topic + "config", message)
     try_publish(topic + "status", "online")
-    topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
+    topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index)
     message = '{' + \
               '"name":"{DEVICE_NAME}-{key_index:02d}-light","stat_t":"~/state","avty_t":"~/status","cmd_t":"~/switch","bri_stat_t":"~/brightness/state","bri_cmd_t":"~/brightness/set","rgb_stat_t":"~/rgb/state","rgb_cmd_t":"~/rgb/set","uniq_id":"{UUID}-btn{key_index}-light","dev":{DEVICE_CONFIG},"ret":true,"~":"{topic}"'. \
                   format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
