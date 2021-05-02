@@ -55,6 +55,8 @@ COLORS = [[0, 0, 0]] * 16  # save color, brightness for each button.
 BRIGHTNESS = [0] * 16  # save brightness for each button.
 STATE = [True] * 16  # save state for each button.
 
+c = None
+
 # Clear the screen
 display.drawFill(0xff0000)
 display.flush()
@@ -160,78 +162,82 @@ def sub_cb(topic, msg):
             restart()
 
 
-# start main:
-display.flush()
-# Connect to Wi-Fi
-if not wifi.status():
-    wifi.connect()
-    display.drawLine(0, 0, 3, 0, ORANGE)
+def init():
+    global c
+    # start main:
     display.flush()
-    wifi.wait()
+    # Connect to Wi-Fi
     if not wifi.status():
-        display.drawLine(0, 0, 3, 0, RED)
+        wifi.connect()
+        display.drawLine(0, 0, 3, 0, ORANGE)
+        display.flush()
+        wifi.wait()
+        if not wifi.status():
+            display.drawLine(0, 0, 3, 0, RED)
+            display.flush()
+            time.sleep(1)
+            system.launcher()
+    display.drawLine(0, 0, 3, 0, GREEN)  # wifi success
+    display.flush()
+
+    # Setup MQTT and connect to it
+    display.drawLine(0, 1, 3, 1, ORANGE)
+    display.flush()
+    c = MQTTClient(UUID, SERVER_IP, port=PORT, user=USERNAME, password=PASSWORD)
+    c.set_callback(sub_cb)
+    # Set a last-will
+    for key_index in range(16):  # each button
+        topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
+        c.set_last_will(topic + "status", "offline", retain=True)
+        topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
+        c.set_last_will(topic + "status", "offline")
+
+    # Connect to MQTT server, fail if not possible and return.
+    if c.connect():
+        print("error connecting")
+        display.drawLine(0, 1, 3, 1, RED)
         display.flush()
         time.sleep(1)
         system.launcher()
-display.drawLine(0, 0, 3, 0, GREEN)  # wifi success
-display.flush()
 
-# Setup MQTT and connect to it
-display.drawLine(0, 1, 3, 1, ORANGE)
-display.flush()
-c = MQTTClient(UUID, SERVER_IP, port=PORT, user=USERNAME, password=PASSWORD)
-c.set_callback(sub_cb)
-# Set a last-will
-for key_index in range(16):  # each button
-    topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index) + '/'
-    c.set_last_will(topic + "status", "offline", retain=True)
-    topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index) + '/'
-    c.set_last_will(topic + "status", "offline")
-
-# Connect to MQTT server, fail if not possible and return.
-if c.connect():
-    print("error connecting")
-    display.drawLine(0, 1, 3, 1, RED)
+    display.drawLine(0, 1, 3, 1, GREEN)  # mqtt success part 1
+    display.drawLine(0, 2, 3, 2, ORANGE)  # mqtt start part 2
     display.flush()
-    time.sleep(1)
-    system.launcher()
 
-display.drawLine(0, 1, 3, 1, GREEN)  # mqtt success part 1
-display.drawLine(0, 2, 3, 2, ORANGE)  # mqtt start part 2
-display.flush()
+    for key_index in range(16):  # each button
+        topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index)
+        message = '{' + '"name":"{DEVICE_NAME}-{key_index:02d}","stat_t":"~/state","avty_t":"~/status","uniq_id":"{UUID}-btn{key_index}","dev":{DEVICE_CONFIG},"~":"{topic}"'.format(
+            key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
+        try_publish(topic + "/config", message)
+        try_publish(topic + "/status", "online")
+        topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index)
+        message = '{' + \
+                  '"name":"{DEVICE_NAME}-{key_index:02d}-light","stat_t":"~/state","avty_t":"~/status","cmd_t":"~/switch","bri_stat_t":"~/brightness/state","bri_cmd_t":"~/brightness/set","rgb_stat_t":"~/rgb/state","rgb_cmd_t":"~/rgb/set","uniq_id":"{UUID}-btn{key_index}-light","dev":{DEVICE_CONFIG},"ret":true,"~":"{topic}"'. \
+                      format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
+        try_publish(topic + "/config", message)
+        try_publish(topic + "/status", "online")
 
-for key_index in range(16):  # each button
-    topic = PREFIX + '/binary_sensor/' + NODE_ID + '/' + str(key_index)
-    message = '{' + '"name":"{DEVICE_NAME}-{key_index:02d}","stat_t":"~/state","avty_t":"~/status","uniq_id":"{UUID}-btn{key_index}","dev":{DEVICE_CONFIG},"~":"{topic}"'.format(
-        key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
-    try_publish(topic + "config", message)
-    try_publish(topic + "status", "online")
-    topic = PREFIX + '/light/' + NODE_ID + '/' + str(key_index)
-    message = '{' + \
-              '"name":"{DEVICE_NAME}-{key_index:02d}-light","stat_t":"~/state","avty_t":"~/status","cmd_t":"~/switch","bri_stat_t":"~/brightness/state","bri_cmd_t":"~/brightness/set","rgb_stat_t":"~/rgb/state","rgb_cmd_t":"~/rgb/set","uniq_id":"{UUID}-btn{key_index}-light","dev":{DEVICE_CONFIG},"ret":true,"~":"{topic}"'. \
-                  format(key_index=key_index, topic=topic, UUID=UUID, DEVICE_CONFIG=DEVICE_CONFIG, DEVICE_NAME=DEVICE_NAME) + '}'
-    try_publish(topic + "config", message)
-    try_publish(topic + "status", "online")
+    display.drawLine(0, 2, 3, 2, 0x00ff00)  # mqtt finish part 2
+    display.drawLine(0, 3, 3, 3, ORANGE)  # mqtt part 3
+    display.flush()
 
-display.drawLine(0, 2, 3, 2, 0x00ff00)  # mqtt finish part 2
-display.drawLine(0, 3, 3, 3, ORANGE)  # mqtt part 3
-display.flush()
+    topic = PREFIX + '/light/' + NODE_ID + '/'
+    c.subscribe(topic + "#")
+    c.subscribe('homeassistant/status')
 
-topic = PREFIX + '/light/' + NODE_ID + '/'
-c.subscribe(topic + "#")
-c.subscribe('homeassistant/status')
+    display.drawLine(0, 3, 3, 3, GREEN)  # mqtt finish part 2
+    display.flush()
 
-display.drawLine(0, 3, 3, 3, GREEN)  # mqtt finish part 2
-display.flush()
+    # Configure the key press handler
+    keypad.add_handler(on_key)
+    touchpads.on(touchpads.HOME, on_home)
+    touchpads.on(touchpads.OK, on_ok)
 
-# Configure the key press handler
-keypad.add_handler(on_key)
-touchpads.on(touchpads.HOME, on_home)
-touchpads.on(touchpads.OK, on_ok)
+    display.drawFill(0x000000)
+    display.flush()
 
-display.drawFill(0x000000)
-display.flush()
 
+init()
 while 1:
     try:
         c.wait_msg()
